@@ -4,54 +4,57 @@ var firebaseConfig = {
   authDomain: "saayadonat.firebaseapp.com",
   databaseURL: "https://saayadonat-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "saayadonat",
+  storageBucket: "saayadonat.firebasestorage.app",
+  messagingSenderId: "191838417140",
+  appId: "1:191838417140:web:b698670357abe7dff2eea1"
 };
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 var products = [];
-var ADMIN_PASSWORD = "admin123"; // ganti password
+var ADMIN_PASSWORD = "admin123"; // ganti kalau mau
 
-// ==========================
-// CEK STATUS LOGIN (PROTEKSI)
-// ==========================
-window.onload = function(){
+document.addEventListener("DOMContentLoaded", function(){
+
+  const loginPage = document.getElementById("loginPage");
+  const adminPanel = document.getElementById("adminPanel");
+  const adminPass = document.getElementById("adminPass");
+
+  // ==========================
+  // CEK LOGIN (PROTEKSI)
+  // ==========================
   if(localStorage.getItem("adminLogin") === "true"){
-    showAdmin();
-  }else{
-    showLogin();
+      showAdmin();
+  } else {
+      showLogin();
   }
-};
 
-function showAdmin(){
-  loginPage.classList.add("hidden");
-  adminPanel.classList.remove("hidden");
-}
-
-function showLogin(){
-  loginPage.classList.remove("hidden");
-  adminPanel.classList.add("hidden");
-}
-
-// ==========================
-// LOGIN
-// ==========================
-function login(){
-  if(adminPass.value === ADMIN_PASSWORD){
-    localStorage.setItem("adminLogin","true");
-    showAdmin();
-  }else{
-    alert("Password salah!");
+  window.login = function(){
+      if(adminPass.value === ADMIN_PASSWORD){
+          localStorage.setItem("adminLogin","true");
+          showAdmin();
+      } else {
+          alert("Password salah!");
+      }
   }
-}
 
-// ==========================
-// LOGOUT
-// ==========================
-function logout(){
-  localStorage.removeItem("adminLogin");
-  showLogin();
-}
+  window.logout = function(){
+      localStorage.removeItem("adminLogin");
+      showLogin();
+  }
+
+  function showAdmin(){
+      loginPage.style.display = "none";
+      adminPanel.style.display = "block";
+  }
+
+  function showLogin(){
+      loginPage.style.display = "block";
+      adminPanel.style.display = "none";
+  }
+
+});
 
 // ==========================
 // LOAD PRODUK
@@ -115,9 +118,6 @@ function renderProducts(){
   document.getElementById("products").innerHTML = html;
 }
 
-// ==========================
-// UPDATE STOK
-// ==========================
 function updateStock(index, change){
   products[index].stock += change;
   if(products[index].stock < 0){
@@ -126,9 +126,6 @@ function updateStock(index, change){
   db.ref("products").set(products);
 }
 
-// ==========================
-// HAPUS PRODUK
-// ==========================
 function deleteProduct(index){
   if(confirm("Yakin hapus produk?")){
     products.splice(index,1);
