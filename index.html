@@ -1,65 +1,81 @@
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue, push } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-const firebaseConfig = {
+<script>
+var firebaseConfig = {
   apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
   authDomain: "saayadonat.firebaseapp.com",
   databaseURL: "https://saayadonat-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "saayadonat",
   storageBucket: "saayadonat.firebasestorage.app",
   messagingSenderId: "191838417140",
-  appId: "1:191838417140:web:7a41a9b5678e6200f2eea1"
+  appId: "1:191838417140:web:b698670357abe7dff2eea1"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
 
-let products = [];
-let cart = [];
+var products=[];
+var cart=[];
 
-onValue(ref(db,'products'), snapshot=>{
+firebase.database().ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   render();
 });
 
 function render(){
-  let html='';
-  products.forEach((p,i)=>{
+  var html='';
+  products.forEach(function(p,i){
     if(p.stock>0){
       html+=`
       <div class="product">
-        <b>${p.name}</b><br>
-        Rp ${p.price}<br>
-        <span class="badge">Stok ${p.stock}</span><br>
-        <button onclick="addCart(${i})">Tambah</button>
+      <b>${p.name}</b><br>
+      Rp ${p.price}<br>
+      <span class="badge">Stok ${p.stock}</span><br>
+      <button onclick="addCart(${i})">Tambah</button>
       </div>`;
     }else{
       html+=`
       <div class="product">
-        <b>${p.name}</b><br>
-        <span class="badge">Stok Habis</span>
+      <b>${p.name}</b><br>
+      <span class="badge">Stok Habis</span>
       </div>`;
     }
   });
-  document.getElementById('productList').innerHTML=html;
+  document.getElementById("productList").innerHTML=html;
 }
 
-window.addCart = function(i){
+function addCart(i){
   cart.push({index:i,qty:1});
-  alert('Ditambahkan ke keranjang');
+  alert("Ditambahkan ke keranjang");
 }
 
-window.checkout = function(){
-  if(cart.length===0) return alert('Keranjang kosong');
+function checkout(){
+  if(cart.length===0) return alert("Keranjang kosong");
 
-  let total=0;
+  var total=0;
 
-  cart.forEach(c=>{
-    let p=products[c.index];
+  cart.forEach(function(c){
+    var p=products[c.index];
+    if(p.stock<c.qty) return alert("Stok tidak cukup!");
 
+    p.stock-=c.qty;
+    total+=p.price*c.qty;
+
+    firebase.database().ref("orders").push({
+      date:new Date().toLocaleDateString(),
+      name:bName.value,
+      product:p.name,
+      qty:c.qty,
+      total:p.price*c.qty
+    });
+  });
+
+  firebase.database().ref("products").set(products);
+
+  cart=[];
+  alert("Pesanan berhasil ❤️");
+}
+</script>
     if(p.stock < c.qty){
       alert('Stok tidak cukup!');
       return;
