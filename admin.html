@@ -1,10 +1,8 @@
-<script type="module">
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getDatabase, ref, set, onValue } 
-from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
-
-const firebaseConfig = {
+<script>
+var firebaseConfig = {
   apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
   authDomain: "saayadonat.firebaseapp.com",
   databaseURL: "https://saayadonat-default-rtdb.asia-southeast1.firebasedatabase.app",
@@ -14,52 +12,101 @@ const firebaseConfig = {
   appId: "1:191838417140:web:7a41a9b5678e6200f2eea1"
 };
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 
-let products = [];
-let orders = [];
-let chart;
+var products = [];
+var orders = [];
+var chart;
 
-window.login = function(){
-  if(pass.value==='admin123'){
+function login(){
+  if(pass.value === "admin123"){
     document.getElementById('panel').classList.remove('hidden');
   }
 }
 
-window.addProduct = function(){
+function addProduct(){
   products.push({
     name:pName.value,
     price:+pPrice.value,
     stock:+pStock.value
   });
-  set(ref(db,'products'), products);
+  firebase.database().ref("products").set(products);
 }
 
-window.updateStock = function(i,val){
+function updateStock(i,val){
   products[i].stock += val;
   if(products[i].stock < 0) products[i].stock = 0;
-  set(ref(db,'products'), products);
+  firebase.database().ref("products").set(products);
 }
 
-onValue(ref(db,'products'), snapshot=>{
+firebase.database().ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   render();
 });
 
-onValue(ref(db,'orders'), snapshot=>{
-  orders = Object.values(snapshot.val() || {});
+firebase.database().ref("orders").on("value", function(snapshot){
+  orders = [];
+  snapshot.forEach(function(child){
+    orders.push(child.val());
+  });
   renderOrders();
   renderChart();
 });
 
 function render(){
-  let html='';
-  products.forEach((p,i)=>{
-    html+=`
-    <div>
+  var html='';
+  products.forEach(function(p,i){
+    html += `
+      <div>
       <b>${p.name}</b>
       <span class="badge">Stok ${p.stock}</span><br>
+      Rp ${p.price}<br>
+      <button onclick="updateStock(${i},1)">+ Stok</button>
+      <button onclick="updateStock(${i},-1)">- Stok</button>
+      <hr></div>`;
+  });
+  document.getElementById("productList").innerHTML = html;
+}
+
+function renderOrders(){
+  var html='';
+  var today=0;
+  var todayStr=new Date().toLocaleDateString();
+
+  orders.forEach(function(o){
+    if(o.date===todayStr) today+=o.total;
+    html+=`<tr>
+      <td>${o.date}</td>
+      <td>${o.name}</td>
+      <td>${o.product}</td>
+      <td>${o.qty}</td>
+      <td>${o.total}</td>
+    </tr>`;
+  });
+
+  document.getElementById("orderTable").innerHTML = html;
+  document.getElementById("todayIncome").innerText =
+    "Omzet Hari Ini: Rp " + today;
+}
+
+function renderChart(){
+  var data={};
+  orders.forEach(function(o){
+    data[o.date]=(data[o.date]||0)+o.total;
+  });
+
+  var labels=Object.keys(data);
+  var values=Object.values(data);
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{labels:labels,datasets:[{label:"Omzet",data:values}]}
+  });
+}
+</script>      <span class="badge">Stok ${p.stock}</span><br>
       Rp ${p.price}<br>
       <button onclick="updateStock(${i},1)">+ Stok</button>
       <button onclick="updateStock(${i},-1)">- Stok</button>
