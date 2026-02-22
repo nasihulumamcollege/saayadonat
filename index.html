@@ -1,65 +1,89 @@
-<!DOCTYPE html>
-<html lang="id">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>SaAya Donat - Garut</title>
-<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
-<style>
-body{font-family:'Poppins',sans-serif;margin:0;background:#fff0f6}
-header{background:linear-gradient(90deg,#ff9ecf,#ff6fb5);color:#fff;padding:20px;text-align:center}
-.container{padding:15px;max-width:900px;margin:auto}
-.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:20px;box-shadow:0 4px 12px rgba(255,105,180,0.2)}
-input,select,textarea,button{width:100%;padding:10px;margin-top:8px;border-radius:12px;border:1px solid #ffc1e3;font-size:14px}
-button{background:#ff6fb5;color:#fff;border:none;font-weight:600;cursor:pointer}
-.badge{display:inline-block;background:#ffb3d9;padding:4px 8px;border-radius:20px;font-size:11px;color:#fff}
-.product{margin-bottom:10px;padding-bottom:10px;border-bottom:1px dashed #ffd1ea}
-.cart-item{border-bottom:1px dashed #ffd1ea;padding:5px 0}
-.total{font-weight:700;margin-top:10px;font-size:16px}
-.rekening-box{background:#fff5fa;padding:10px;border-radius:12px;margin-top:10px;display:none}
-</style>
-</head>
-<body>
+<script type="module">
 
-<header>
-<h1>🍩 SaAya Donat</h1>
-<p>Donat Fresh Garut</p>
-</header>
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, onValue, push } 
+from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
-<div class="container">
+const firebaseConfig = {
+  apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
+  authDomain: "saayadonat.firebaseapp.com",
+  databaseURL: "https://saayadonat-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "saayadonat",
+  storageBucket: "saayadonat.firebasestorage.app",
+  messagingSenderId: "191838417140",
+  appId: "1:191838417140:web:7a41a9b5678e6200f2eea1"
+};
 
-<div class="card">
-<h3>Menu Donat</h3>
-<div id="productList"></div>
-</div>
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
-<div class="card">
-<h3>🛒 Keranjang</h3>
-<div id="cartList"></div>
-<div class="total">Total: Rp <span id="totalPrice">0</span></div>
-</div>
+let products = [];
+let cart = [];
 
-<div class="card">
-<h3>Data Pemesan</h3>
-<input id="bName" placeholder="Nama">
-<input id="bPhone" placeholder="No WhatsApp">
-<textarea id="bAddress" placeholder="Alamat Lengkap"></textarea>
+onValue(ref(db,'products'), snapshot=>{
+  products = snapshot.val() || [];
+  render();
+});
 
-<select id="bMethod" onchange="toggleRekening()">
-<option value="COD">COD</option>
-<option value="Transfer">Transfer</option>
-</select>
+function render(){
+  let html='';
+  products.forEach((p,i)=>{
+    if(p.stock>0){
+      html+=`
+      <div class="product">
+        <b>${p.name}</b><br>
+        Rp ${p.price}<br>
+        <span class="badge">Stok ${p.stock}</span><br>
+        <button onclick="addCart(${i})">Tambah</button>
+      </div>`;
+    }else{
+      html+=`
+      <div class="product">
+        <b>${p.name}</b><br>
+        <span class="badge">Stok Habis</span>
+      </div>`;
+    }
+  });
+  document.getElementById('productList').innerHTML=html;
+}
 
-<div class="rekening-box" id="rekeningBox">
-<b>Pembayaran Transfer ke:</b><br>
-Bank: <b>BCA</b><br>
-No Rekening: <b>1234567890</b><br>
-Atas Nama: <b>SaAya Donat</b>
-</div>
+window.addCart = function(i){
+  cart.push({index:i,qty:1});
+  alert('Ditambahkan ke keranjang');
+}
 
-<button onclick="checkout()">Pesan Sekarang</button>
-</div>
+window.checkout = function(){
+  if(cart.length===0) return alert('Keranjang kosong');
 
+  let total=0;
+
+  cart.forEach(c=>{
+    let p=products[c.index];
+
+    if(p.stock < c.qty){
+      alert('Stok tidak cukup!');
+      return;
+    }
+
+    p.stock -= c.qty;
+    total += p.price*c.qty;
+
+    push(ref(db,'orders'),{
+      date:new Date().toLocaleDateString(),
+      name:bName.value,
+      product:p.name,
+      qty:c.qty,
+      total:p.price*c.qty
+    });
+  });
+
+  set(ref(db,'products'), products);
+
+  cart=[];
+  alert('Pesanan berhasil ❤️');
+}
+
+</script>
 </div>
 
 <script>
