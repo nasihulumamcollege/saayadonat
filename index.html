@@ -4,23 +4,50 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SaAya Donat</title>
-
 <style>
-body{font-family:Arial;background:#fff0f6;margin:0;padding:15px}
-.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px}
-button{padding:8px 12px;border:none;background:#ff6fb5;color:#fff;border-radius:8px}
-.badge{background:#ffb3d9;padding:3px 8px;border-radius:20px;font-size:12px}
+body { font-family: Arial; background:#fff0f6; margin:0; padding:15px }
+.card { background:#fff; padding:15px; margin-bottom:15px; border-radius:12px; }
+button { padding:8px 12px; border:none; background:#ff6fb5; color:#fff; border-radius:8px; cursor:pointer; }
+.badge { background:#ffb3d9; padding:3px 8px; border-radius:20px; font-size:12px; }
+.cart-item { margin-bottom:10px; }
+input[type=number] { width:50px; padding:4px; }
+#search { padding:6px; width:100%; margin-bottom:15px; border-radius:8px; border:1px solid #ccc; }
 </style>
 </head>
 <body>
 
 <h2>🍩 SaAya Donat</h2>
 
+<input id="search" placeholder="Cari produk..." oninput="render()">
+
 <div id="products"></div>
+
+<h3>Keranjang</h3>
+<div id="cart"></div>
+<b>Total: Rp <span id="total">0</span></b><br><br>
 
 <h3>Data Pemesan</h3>
 <input id="name" placeholder="Nama"><br><br>
+<input id="alamat" placeholder="Alamat Lengkap"><br><br>
+<input id="wa" placeholder="No WhatsApp"><br><br>
+
+<label>Metode Pengambilan:</label><br>
+<input type="radio" name="pickup" value="ambil" checked onchange="updatePaymentOptions()"> Ambil sendiri<br>
+<input type="radio" name="pickup" value="delivery" onchange="updatePaymentOptions()"> Delivery via GoSend<br><br>
+
+<label>Metode Pembayaran:</label><br>
+<select id="payment">
+  <option value="cod">COD</option>
+  <option value="transfer">Transfer / QRIS</option>
+</select><br><br>
+
+<label>Tanggal Pengambilan / Pengiriman:</label><br>
+<input type="date" id="tglAmbil" min="<?= new Date().toISOString().split('T')[0] ?>"><br><br>
+
 <button onclick="checkout()">Pesan</button>
+
+<h3>Riwayat Pesanan</h3>
+<div id="orders"></div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
@@ -36,60 +63,149 @@ var firebaseConfig = {
   messagingSenderId: "191838417140",
   appId: "1:191838417140:web:b698670357abe7dff2eea1"
 };
-
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 var products = [];
-var cartIndex = null;
+var cart = [];
 
 db.ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   render();
 });
 
+db.ref("orders").on("value", function(snapshot){
+  var ordersData = snapshot.val() || [];
+  renderOrders(ordersData);
+});
+
 function render(){
-  var html="";
-  products.forEach(function(p,i){
+  var search = document.getElementById("search").value.toLowerCase();
+  var html = "";
+  products.forEach(function(p, i){
+    if(search && !p.name.toLowerCase().includes(search)) return;
+    html += `<div class="card">
+      <b>${p.name}</b><br>
+      Rp ${p.price}<br>
+      <span class="badge">Stok ${p.stock}</span><br><br>`;
     if(p.stock>0){
-      html+=`
-      <div class="card">
-        <b>${p.name}</b><br>
-        Rp ${p.price}<br>
-        <span class="badge">Stok ${p.stock}</span><br><br>
-        <button onclick="selectProduct(${i})">Pilih</button>
-      </div>`;
+      html += `<input type="number" id="qty-${i}" value="1" min="1" max="${p.stock}">
+               <button onclick="addToCart(${i})">Tambah ke Keranjang</button>`;
+    } else {
+      html += `<span style="color:red;">Stok Habis</span>`;
     }
+    html += `</div>`;
   });
   document.getElementById("products").innerHTML = html;
+  renderCart();
 }
 
-function selectProduct(i){
-  cartIndex = i;
-  alert("Produk dipilih");
+function addToCart(i){
+  var qty = parseInt(document.getElementById(`qty-${i}`).value);
+  if(qty <=0 || qty > products[i].stock) return alert("Jumlah tidak valid!");
+  var existing = cart.find(c=>c.index===i);
+  if(existing){
+    if(existing.qty + qty > products[i].stock) return alert("Jumlah melebihi stok!");
+    existing.qty += qty;
+  } else {
+    cart.push({index:i, qty:qty});
+  }
+  renderCart();
+}
+
+function renderCart(){
+  var html = "";
+  var total = 0;
+  cart.forEach(function(c, idx){
+    var p = products[c.index];
+    var subtotal = p.price * c.qty;
+    total += subtotal;
+    html += `<div class="cart-item">
+      ${p.name} - Rp ${p.price} x 
+      <input type="number" value="${c.qty}" min="1" max="${p.stock}" 
+             onchange="updateCart(${idx}, this.value)">
+      = Rp ${subtotal}
+      <button onclick="removeCart(${idx})">❌</button>
+    </div>`;
+  });
+  document.getElementById("cart").innerHTML = html;
+  document.getElementById("total").innerText = total;
+}
+
+function updateCart(idx, qty){
+  qty = parseInt(qty);
+  var p = products[cart[idx].index];
+  if(qty <=0 || qty > p.stock) return alert("Jumlah tidak valid!");
+  cart[idx].qty = qty;
+  renderCart();
+}
+
+function removeCart(idx){
+  cart.splice(idx,1);
+  renderCart();
+}
+
+function updatePaymentOptions(){
+  var pickup = document.querySelector('input[name="pickup"]:checked').value;
+  var paymentSelect = document.getElementById("payment");
+  if(pickup==="delivery"){
+    paymentSelect.value = "transfer";
+    paymentSelect.querySelector('option[value="cod"]').disabled = true;
+  } else {
+    paymentSelect.querySelector('option[value="cod"]').disabled = false;
+  }
 }
 
 function checkout(){
-  if(cartIndex===null) return alert("Pilih produk dulu!");
+  if(cart.length===0) return alert("Keranjang kosong!");
   var nama = document.getElementById("name").value;
-  if(nama==="") return alert("Isi nama dulu!");
+  var alamat = document.getElementById("alamat").value;
+  var wa = document.getElementById("wa").value;
+  var pickup = document.querySelector('input[name="pickup"]:checked').value;
+  var payment = document.getElementById("payment").value;
+  var tglAmbil = document.getElementById("tglAmbil").value;
 
-  var p = products[cartIndex];
-  if(p.stock<=0) return alert("Stok habis!");
+  if(!nama || !alamat || !wa || !tglAmbil) return alert("Isi semua data pembeli!");
 
-  p.stock -= 1;
+  cart.forEach(function(c){
+    var p = products[c.index];
+    p.stock -= c.qty;
 
-  db.ref("products").set(products);
-
-  db.ref("orders").push({
-    date:new Date().toLocaleDateString(),
-    name:nama,
-    product:p.name,
-    qty:1,
-    total:p.price
+    db.ref("orders").push({
+      date:new Date().toLocaleString(),
+      name:nama,
+      alamat:alamat,
+      wa:wa,
+      pickup:pickup,
+      payment:payment,
+      tglAmbil:tglAmbil,
+      product:p.name,
+      qty:c.qty,
+      total:p.price*c.qty
+    });
   });
 
+  db.ref("products").set(products);
+  cart = [];
+  render();
   alert("Pesanan berhasil ❤️");
+}
+
+function renderOrders(ordersData){
+  var html = "";
+  Object.values(ordersData).reverse().forEach(o=>{
+    html += `<div class="card">
+      <b>${o.name}</b> memesan ${o.product} x ${o.qty}<br>
+      Alamat: ${o.alamat}<br>
+      WA: ${o.wa}<br>
+      Pickup: ${o.pickup}<br>
+      Pembayaran: ${o.payment}<br>
+      Tanggal Pengambilan: ${o.tglAmbil}<br>
+      Total: Rp ${o.total}<br>
+      Tanggal Pesan: ${o.date}
+    </div>`;
+  });
+  document.getElementById("orders").innerHTML = html;
 }
 </script>
 
