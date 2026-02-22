@@ -1,70 +1,88 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin SaAya Donat</title>
-
-<style>
-body{font-family:Arial;background:#fff0f6;margin:0;padding:15px}
-.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px}
-button{padding:6px 10px;border:none;background:#ff6fb5;color:#fff;border-radius:6px}
-</style>
-</head>
-<body>
-
-<h2>🔐 Admin</h2>
-
-<div class="card">
-<input id="pName" placeholder="Nama Produk"><br><br>
-<input id="pPrice" type="number" placeholder="Harga"><br><br>
-<input id="pStock" type="number" placeholder="Stok"><br><br>
-<button onclick="addProduct()">Tambah Produk</button>
-</div>
-
-<h3>Daftar Produk</h3>
-<div id="products"></div>
-
-<h3>Data Order</h3>
-<div id="orders"></div>
-
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
-<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
-
 <script>
 var firebaseConfig = {
   apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
   authDomain: "saayadonat.firebaseapp.com",
   databaseURL: "https://saayadonat-default-rtdb.asia-southeast1.firebasedatabase.app",
   projectId: "saayadonat",
-  storageBucket: "saayadonat.firebasestorage.app",
-  messagingSenderId: "191838417140",
-  appId: "1:191838417140:web:b698670357abe7dff2eea1"
 };
 
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 var products = [];
+var ADMIN_PASSWORD = "admin123"; // ganti password
 
+// ==========================
+// CEK STATUS LOGIN (PROTEKSI)
+// ==========================
+window.onload = function(){
+  if(localStorage.getItem("adminLogin") === "true"){
+    showAdmin();
+  }else{
+    showLogin();
+  }
+};
+
+function showAdmin(){
+  loginPage.classList.add("hidden");
+  adminPanel.classList.remove("hidden");
+}
+
+function showLogin(){
+  loginPage.classList.remove("hidden");
+  adminPanel.classList.add("hidden");
+}
+
+// ==========================
+// LOGIN
+// ==========================
+function login(){
+  if(adminPass.value === ADMIN_PASSWORD){
+    localStorage.setItem("adminLogin","true");
+    showAdmin();
+  }else{
+    alert("Password salah!");
+  }
+}
+
+// ==========================
+// LOGOUT
+// ==========================
+function logout(){
+  localStorage.removeItem("adminLogin");
+  showLogin();
+}
+
+// ==========================
+// LOAD PRODUK
+// ==========================
 db.ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   renderProducts();
 });
 
+// ==========================
+// LOAD ORDER
+// ==========================
 db.ref("orders").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     var o = child.val();
     html+=`
-      <div class="card">
-      ${o.date} - ${o.name} beli ${o.product}
-      </div>`;
+    <tr>
+      <td>${o.date || "-"}</td>
+      <td>${o.name || "-"}</td>
+      <td>${o.product || "-"}</td>
+      <td>${o.qty || 1}</td>
+      <td>Rp ${o.total || 0}</td>
+    </tr>`;
   });
   document.getElementById("orders").innerHTML = html;
 });
 
+// ==========================
+// TAMBAH PRODUK
+// ==========================
 function addProduct(){
   products.push({
     name:pName.value,
@@ -72,19 +90,49 @@ function addProduct(){
     stock:+pStock.value
   });
   db.ref("products").set(products);
+  pName.value="";
+  pPrice.value="";
+  pStock.value="";
 }
 
+// ==========================
+// RENDER PRODUK
+// ==========================
 function renderProducts(){
   var html="";
-  products.forEach(function(p){
+  products.forEach(function(p,i){
     html+=`
       <div class="card">
-      ${p.name} - Rp ${p.price} - Stok ${p.stock}
+      <b>${p.name}</b><br>
+      Harga: Rp ${p.price}<br>
+      Stok: ${p.stock}<br><br>
+
+      <button onclick="updateStock(${i},1)">+ Stok</button>
+      <button onclick="updateStock(${i},-1)">- Stok</button>
+      <button onclick="deleteProduct(${i})" style="background:red">Hapus</button>
       </div>`;
   });
   document.getElementById("products").innerHTML = html;
 }
-</script>
 
-</body>
-  </html>
+// ==========================
+// UPDATE STOK
+// ==========================
+function updateStock(index, change){
+  products[index].stock += change;
+  if(products[index].stock < 0){
+    products[index].stock = 0;
+  }
+  db.ref("products").set(products);
+}
+
+// ==========================
+// HAPUS PRODUK
+// ==========================
+function deleteProduct(index){
+  if(confirm("Yakin hapus produk?")){
+    products.splice(index,1);
+    db.ref("products").set(products);
+  }
+}
+</script>
