@@ -1,3 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin SaAya Donat</title>
+
+<style>
+body{font-family:Arial;background:#fff0f6;margin:0;padding:15px}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px}
+button{padding:6px 10px;border:none;background:#ff6fb5;color:#fff;border-radius:6px;cursor:pointer}
+input{padding:6px;width:100%;box-sizing:border-box;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;background:#fff}
+th,td{padding:8px;border:1px solid #ddd;text-align:center}
+th{background:#ff6fb5;color:#fff}
+#adminPanel{display:none}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginPage">
+<h2>🔐 Login Admin</h2>
+<input type="password" id="adminPass" placeholder="Masukkan Password">
+<button onclick="login()">Login</button>
+</div>
+
+<!-- ADMIN PANEL -->
+<div id="adminPanel">
+<h2>📦 Admin Panel</h2>
+<button onclick="logout()" style="background:#333;margin-bottom:10px">Logout</button>
+
+<div class="card">
+<input id="pName" placeholder="Nama Produk">
+<input id="pPrice" type="number" placeholder="Harga">
+<input id="pStock" type="number" placeholder="Stok">
+<button onclick="addProduct()">Tambah Produk</button>
+</div>
+
+<h3>Daftar Produk</h3>
+<div id="products"></div>
+
+<h3>📋 Rincian Order Masuk</h3>
+<table>
+<thead>
+<tr>
+<th>Tanggal</th>
+<th>Nama</th>
+<th>Produk</th>
+<th>Qty</th>
+<th>Total</th>
+</tr>
+</thead>
+<tbody id="orders"></tbody>
+</table>
+
+</div>
+
+<!-- FIREBASE -->
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
+
 <script>
 var firebaseConfig = {
   apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
@@ -12,124 +74,97 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+var ADMIN_PASSWORD = "admin123";
 var products = [];
-var ADMIN_PASSWORD = "admin123"; // ganti kalau mau
 
-document.addEventListener("DOMContentLoaded", function(){
+// ================= LOGIN PROTECTION =================
+if(localStorage.getItem("adminLogin") === "true"){
+  document.getElementById("loginPage").style.display="none";
+  document.getElementById("adminPanel").style.display="block";
+}
 
-  const loginPage = document.getElementById("loginPage");
-  const adminPanel = document.getElementById("adminPanel");
-  const adminPass = document.getElementById("adminPass");
-
-  // ==========================
-  // CEK LOGIN (PROTEKSI)
-  // ==========================
-  if(localStorage.getItem("adminLogin") === "true"){
-      showAdmin();
-  } else {
-      showLogin();
+function login(){
+  var pass = document.getElementById("adminPass").value;
+  if(pass === ADMIN_PASSWORD){
+    localStorage.setItem("adminLogin","true");
+    location.reload();
+  }else{
+    alert("Password salah!");
   }
+}
 
-  window.login = function(){
-      if(adminPass.value === ADMIN_PASSWORD){
-          localStorage.setItem("adminLogin","true");
-          showAdmin();
-      } else {
-          alert("Password salah!");
-      }
-  }
+function logout(){
+  localStorage.removeItem("adminLogin");
+  location.reload();
+}
 
-  window.logout = function(){
-      localStorage.removeItem("adminLogin");
-      showLogin();
-  }
-
-  function showAdmin(){
-      loginPage.style.display = "none";
-      adminPanel.style.display = "block";
-  }
-
-  function showLogin(){
-      loginPage.style.display = "block";
-      adminPanel.style.display = "none";
-  }
-
-});
-
-// ==========================
-// LOAD PRODUK
-// ==========================
+// ================= LOAD PRODUCTS =================
 db.ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   renderProducts();
 });
 
-// ==========================
-// LOAD ORDER
-// ==========================
+// ================= LOAD ORDERS =================
 db.ref("orders").on("value", function(snapshot){
   var html="";
   snapshot.forEach(function(child){
     var o = child.val();
-    html+=`
-    <tr>
-      <td>${o.date || "-"}</td>
-      <td>${o.name || "-"}</td>
-      <td>${o.product || "-"}</td>
-      <td>${o.qty || 1}</td>
-      <td>Rp ${o.total || 0}</td>
-    </tr>`;
+    html += "<tr>"+
+      "<td>"+(o.date||"-")+"</td>"+
+      "<td>"+(o.name||"-")+"</td>"+
+      "<td>"+(o.product||"-")+"</td>"+
+      "<td>"+(o.qty||1)+"</td>"+
+      "<td>Rp "+(o.total||0)+"</td>"+
+      "</tr>";
   });
   document.getElementById("orders").innerHTML = html;
 });
 
-// ==========================
-// TAMBAH PRODUK
-// ==========================
+// ================= ADD PRODUCT =================
 function addProduct(){
-  products.push({
-    name:pName.value,
-    price:+pPrice.value,
-    stock:+pStock.value
-  });
+  var name = document.getElementById("pName").value;
+  var price = Number(document.getElementById("pPrice").value);
+  var stock = Number(document.getElementById("pStock").value);
+
+  if(!name) return alert("Nama kosong!");
+
+  products.push({name:name, price:price, stock:stock});
   db.ref("products").set(products);
+
   pName.value="";
   pPrice.value="";
   pStock.value="";
 }
 
-// ==========================
-// RENDER PRODUK
-// ==========================
+// ================= RENDER =================
 function renderProducts(){
   var html="";
   products.forEach(function(p,i){
-    html+=`
-      <div class="card">
-      <b>${p.name}</b><br>
-      Harga: Rp ${p.price}<br>
-      Stok: ${p.stock}<br><br>
-
-      <button onclick="updateStock(${i},1)">+ Stok</button>
-      <button onclick="updateStock(${i},-1)">- Stok</button>
-      <button onclick="deleteProduct(${i})" style="background:red">Hapus</button>
-      </div>`;
+    html += "<div class='card'>"+
+      "<b>"+p.name+"</b><br>"+
+      "Harga: Rp "+p.price+"<br>"+
+      "Stok: "+p.stock+"<br><br>"+
+      "<button onclick='updateStock("+i+",1)'>+ Stok</button> "+
+      "<button onclick='updateStock("+i+",-1)'>- Stok</button> "+
+      "<button onclick='deleteProduct("+i+")' style='background:red'>Hapus</button>"+
+      "</div>";
   });
   document.getElementById("products").innerHTML = html;
 }
 
-function updateStock(index, change){
-  products[index].stock += change;
-  if(products[index].stock < 0){
-    products[index].stock = 0;
-  }
+function updateStock(i,change){
+  products[i].stock += change;
+  if(products[i].stock < 0) products[i].stock = 0;
   db.ref("products").set(products);
 }
 
-function deleteProduct(index){
-  if(confirm("Yakin hapus produk?")){
-    products.splice(index,1);
+function deleteProduct(i){
+  if(confirm("Yakin hapus?")){
+    products.splice(i,1);
     db.ref("products").set(products);
   }
 }
 </script>
+
+</body>
+</html>
