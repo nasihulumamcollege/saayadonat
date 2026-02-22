@@ -174,6 +174,26 @@ function deleteProduct(i){
     db.ref("products").set(products);
   }
 }
+// ================= RESET PRODUK =================
+function resetProducts(){
+  if(confirm("Yakin ingin hapus semua produk?")){
+    db.ref("products").remove();
+  }
+}
+
+// ================= RESET ORDERS =================
+function resetOrders(){
+  if(confirm("Yakin ingin hapus semua order?")){
+    db.ref("orders").remove();
+  }
+}
+
+// ================= RESET SEMUA =================
+function resetAll(){
+  if(confirm("Yakin ingin hapus SEMUA DATA?")){
+    db.ref().remove();
+  }
+}
 </script>
 
 </body>
