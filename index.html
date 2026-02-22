@@ -5,13 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>SaAya Donat</title>
 <style>
-body { font-family: Arial; background:#fff0f6; margin:0; padding:15px }
+body { font-family: Arial; background:#fff0f6; margin:0; padding:15px; }
 .card { background:#fff; padding:15px; margin-bottom:15px; border-radius:12px; }
 button { padding:8px 12px; border:none; background:#ff6fb5; color:#fff; border-radius:8px; cursor:pointer; }
 .badge { background:#ffb3d9; padding:3px 8px; border-radius:20px; font-size:12px; }
 .cart-item { margin-bottom:10px; }
 input[type=number] { width:50px; padding:4px; }
 #search { padding:6px; width:100%; margin-bottom:15px; border-radius:8px; border:1px solid #ccc; }
+#paymentInfo img { width:150px; margin-top:5px; }
+#paymentInfo { background:#fff0f6; padding:10px; border-radius:8px; margin-bottom:10px; display:none; }
 </style>
 </head>
 <body>
@@ -36,24 +38,24 @@ input[type=number] { width:50px; padding:4px; }
 <input type="radio" name="pickup" value="delivery" onchange="updatePaymentOptions()"> Delivery via GoSend<br><br>
 
 <label>Metode Pembayaran:</label><br>
-<select id="payment">
+<select id="payment" onchange="showPaymentInfo()">
   <option value="cod">COD</option>
   <option value="transfer">Transfer / QRIS</option>
 </select><br><br>
 
+<div id="paymentInfo"></div>
+
 <label>Tanggal Pengambilan / Pengiriman:</label><br>
-<input type="date" id="tglAmbil" min="<?= new Date().toISOString().split('T')[0] ?>"><br><br>
+<input type="date" id="tglAmbil"><br><br>
 
 <button onclick="checkout()">Pesan</button>
-
-<h3>Riwayat Pesanan</h3>
-<div id="orders"></div>
 
 <!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
 <script>
+// Konfigurasi Firebase
 var firebaseConfig = {
   apiKey: "AIzaSyA7Ui4SXydisrIUpeX32vpqcIDQCsqOLXo",
   authDomain: "saayadonat.firebaseapp.com",
@@ -66,6 +68,7 @@ var firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
+// Data produk dan keranjang
 var products = [];
 var cart = [];
 
@@ -74,11 +77,10 @@ db.ref("products").on("value", function(snapshot){
   render();
 });
 
-db.ref("orders").on("value", function(snapshot){
-  var ordersData = snapshot.val() || [];
-  renderOrders(ordersData);
-});
+// --- DATA PEMBAYARAN TOKO ---
+var rekeningToko = "Bank ABC 1234567890 a.n. SaAya Donat";
 
+// --- RENDER PRODUK ---
 function render(){
   var search = document.getElementById("search").value.toLowerCase();
   var html = "";
@@ -100,6 +102,7 @@ function render(){
   renderCart();
 }
 
+// --- KERANJANG ---
 function addToCart(i){
   var qty = parseInt(document.getElementById(`qty-${i}`).value);
   if(qty <=0 || qty > products[i].stock) return alert("Jumlah tidak valid!");
@@ -145,6 +148,7 @@ function removeCart(idx){
   renderCart();
 }
 
+// --- METODE PEMBAYARAN ---
 function updatePaymentOptions(){
   var pickup = document.querySelector('input[name="pickup"]:checked').value;
   var paymentSelect = document.getElementById("payment");
@@ -154,8 +158,24 @@ function updatePaymentOptions(){
   } else {
     paymentSelect.querySelector('option[value="cod"]').disabled = false;
   }
+  showPaymentInfo();
 }
 
+function showPaymentInfo(){
+  var method = document.getElementById("payment").value;
+  var div = document.getElementById("paymentInfo");
+  if(method === "transfer"){
+    div.style.display = "block";
+    div.innerHTML = `<b>Rekening Toko:</b> ${rekeningToko}<br>
+                     <b>QRIS:</b><br>
+                     <img src="qris.png" alt="QRIS">`;
+  } else {
+    div.style.display = "none";
+    div.innerHTML = "";
+  }
+}
+
+// --- CHECKOUT KE WA ---
 function checkout(){
   if(cart.length===0) return alert("Keranjang kosong!");
   var nama = document.getElementById("name").value;
@@ -164,49 +184,37 @@ function checkout(){
   var pickup = document.querySelector('input[name="pickup"]:checked').value;
   var payment = document.getElementById("payment").value;
   var tglAmbil = document.getElementById("tglAmbil").value;
-
+  
   if(!nama || !alamat || !wa || !tglAmbil) return alert("Isi semua data pembeli!");
 
+  // Update stok di Firebase
   cart.forEach(function(c){
     var p = products[c.index];
     p.stock -= c.qty;
-
-    db.ref("orders").push({
-      date:new Date().toLocaleString(),
-      name:nama,
-      alamat:alamat,
-      wa:wa,
-      pickup:pickup,
-      payment:payment,
-      tglAmbil:tglAmbil,
-      product:p.name,
-      qty:c.qty,
-      total:p.price*c.qty
-    });
   });
-
   db.ref("products").set(products);
+
+  // Pesan WA otomatis
+  var msg = `Halo! Saya ingin memesan:\n`;
+  cart.forEach(function(c){
+    var p = products[c.index];
+    msg += `- ${p.name} x ${c.qty} (Rp ${p.price*c.qty})\n`;
+  });
+  msg += `Total: Rp ${cart.reduce((sum,c)=>sum+products[c.index].price*c.qty,0)}\n`;
+  msg += `Nama: ${nama}\nAlamat: ${alamat}\nWA: ${wa}\n`;
+  msg += `Pickup: ${pickup}\nPembayaran: ${payment}\nTanggal Ambil: ${tglAmbil}`;
+
+  // Nomor WA toko
+  var waToko = "628123456789"; // ganti dengan nomor WA kamu
+  var url = `https://wa.me/${waToko}?text=${encodeURIComponent(msg)}`;
+  window.open(url, "_blank");
+
   cart = [];
-  render();
-  alert("Pesanan berhasil ❤️");
+  renderCart();
 }
 
-function renderOrders(ordersData){
-  var html = "";
-  Object.values(ordersData).reverse().forEach(o=>{
-    html += `<div class="card">
-      <b>${o.name}</b> memesan ${o.product} x ${o.qty}<br>
-      Alamat: ${o.alamat}<br>
-      WA: ${o.wa}<br>
-      Pickup: ${o.pickup}<br>
-      Pembayaran: ${o.payment}<br>
-      Tanggal Pengambilan: ${o.tglAmbil}<br>
-      Total: Rp ${o.total}<br>
-      Tanggal Pesan: ${o.date}
-    </div>`;
-  });
-  document.getElementById("orders").innerHTML = html;
-}
+// Load default
+showPaymentInfo();
 </script>
 
 </body>
