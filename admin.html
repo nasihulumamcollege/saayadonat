@@ -1,3 +1,34 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin SaAya Donat</title>
+
+<style>
+body{font-family:Arial;background:#fff0f6;margin:0;padding:15px}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px}
+button{padding:6px 10px;border:none;background:#ff6fb5;color:#fff;border-radius:6px}
+</style>
+</head>
+<body>
+
+<h2>🔐 Admin</h2>
+
+<div class="card">
+<input id="pName" placeholder="Nama Produk"><br><br>
+<input id="pPrice" type="number" placeholder="Harga"><br><br>
+<input id="pStock" type="number" placeholder="Stok"><br><br>
+<button onclick="addProduct()">Tambah Produk</button>
+</div>
+
+<h3>Daftar Produk</h3>
+<div id="products"></div>
+
+<h3>Data Order</h3>
+<div id="orders"></div>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
@@ -16,14 +47,23 @@ firebase.initializeApp(firebaseConfig);
 var db = firebase.database();
 
 var products = [];
-var orders = [];
-var chart;
 
-function login(){
-  if(pass.value === "admin123"){
-    document.getElementById('panel').classList.remove('hidden');
-  }
-}
+db.ref("products").on("value", function(snapshot){
+  products = snapshot.val() || [];
+  renderProducts();
+});
+
+db.ref("orders").on("value", function(snapshot){
+  var html="";
+  snapshot.forEach(function(child){
+    var o = child.val();
+    html+=`
+      <div class="card">
+      ${o.date} - ${o.name} beli ${o.product}
+      </div>`;
+  });
+  document.getElementById("orders").innerHTML = html;
+});
 
 function addProduct(){
   products.push({
@@ -34,187 +74,17 @@ function addProduct(){
   db.ref("products").set(products);
 }
 
-function updateStock(i,val){
-  products[i].stock += val;
-  if(products[i].stock < 0) products[i].stock = 0;
-  db.ref("products").set(products);
-}
-
-db.ref("products").on("value", function(snapshot){
-  products = snapshot.val() || [];
-  render();
-});
-
-db.ref("orders").on("value", function(snapshot){
-  orders = [];
-  snapshot.forEach(function(child){
-    orders.push(child.val());
-  });
-  renderOrders();
-  renderChart();
-});
-
-function render(){
-  var html='';
-  products.forEach(function(p,i){
-    html += `
-      <div>
-      <b>${p.name}</b>
-      <span class="badge">Stok ${p.stock}</span><br>
-      Rp ${p.price}<br>
-      <button onclick="updateStock(${i},1)">+ Stok</button>
-      <button onclick="updateStock(${i},-1)">- Stok</button>
-      <hr></div>`;
-  });
-  document.getElementById("productList").innerHTML = html;
-}
-
-function renderOrders(){
-  var html='';
-  var today=0;
-  var todayStr=new Date().toLocaleDateString();
-
-  orders.forEach(function(o){
-    if(o.date===todayStr) today+=o.total;
-    html+=`<tr>
-      <td>${o.date}</td>
-      <td>${o.name}</td>
-      <td>${o.product}</td>
-      <td>${o.qty}</td>
-      <td>${o.total}</td>
-    </tr>`;
-  });
-
-  document.getElementById("orderTable").innerHTML = html;
-  document.getElementById("todayIncome").innerText =
-    "Omzet Hari Ini: Rp " + today;
-}
-
-function renderChart(){
-  var data={};
-  orders.forEach(function(o){
-    data[o.date]=(data[o.date]||0)+o.total;
-  });
-
-  var labels=Object.keys(data);
-  var values=Object.values(data);
-
-  if(chart) chart.destroy();
-
-  chart=new Chart(document.getElementById("chart"),{
-    type:"bar",
-    data:{labels:labels,datasets:[{label:"Omzet",data:values}]}
-  });
-}
-</script>      <b>${p.name}</b>
-      <span class="badge">Stok ${p.stock}</span><br>
-      Rp ${p.price}<br>
-      <button onclick="updateStock(${i},1)">+ Stok</button>
-      <button onclick="updateStock(${i},-1)">- Stok</button>
-      <hr></div>`;
-  });
-  document.getElementById("productList").innerHTML = html;
-}
-
-function renderOrders(){
-  var html='';
-  var today=0;
-  var todayStr=new Date().toLocaleDateString();
-
-  orders.forEach(function(o){
-    if(o.date===todayStr) today+=o.total;
-    html+=`<tr>
-      <td>${o.date}</td>
-      <td>${o.name}</td>
-      <td>${o.product}</td>
-      <td>${o.qty}</td>
-      <td>${o.total}</td>
-    </tr>`;
-  });
-
-  document.getElementById("orderTable").innerHTML = html;
-  document.getElementById("todayIncome").innerText =
-    "Omzet Hari Ini: Rp " + today;
-}
-
-function renderChart(){
-  var data={};
-  orders.forEach(function(o){
-    data[o.date]=(data[o.date]||0)+o.total;
-  });
-
-  var labels=Object.keys(data);
-  var values=Object.values(data);
-
-  if(chart) chart.destroy();
-
-  chart=new Chart(document.getElementById("chart"),{
-    type:"bar",
-    data:{labels:labels,datasets:[{label:"Omzet",data:values}]}
-  });
-}
-</script>      <span class="badge">Stok ${p.stock}</span><br>
-      Rp ${p.price}<br>
-      <button onclick="updateStock(${i},1)">+ Stok</button>
-      <button onclick="updateStock(${i},-1)">- Stok</button>
-      <hr>
-    </div>`;
-  });
-  document.getElementById('productList').innerHTML=html;
-}
-
-function renderOrders(){
-  let html='';
-  let today=0;
-  let todayStr=new Date().toLocaleDateString();
-
-  orders.forEach(o=>{
-    if(o.date===todayStr) today+=o.total;
+function renderProducts(){
+  var html="";
+  products.forEach(function(p){
     html+=`
-    <tr>
-      <td>${o.date}</td>
-      <td>${o.name}</td>
-      <td>${o.product}</td>
-      <td>${o.qty}</td>
-      <td>${o.total}</td>
-    </tr>`;
+      <div class="card">
+      ${p.name} - Rp ${p.price} - Stok ${p.stock}
+      </div>`;
   });
-
-  document.getElementById('orderTable').innerHTML=html;
-  document.getElementById('todayIncome').innerText='Omzet Hari Ini: Rp '+today;
-}
-
-function renderChart(){
-  let data={};
-  orders.forEach(o=>{
-    data[o.date]=(data[o.date]||0)+o.total;
-  });
-
-  let labels=Object.keys(data);
-  let values=Object.values(data);
-
-  if(chart) chart.destroy();
-
-  chart=new Chart(document.getElementById('chart'),{
-    type:'bar',
-    data:{labels:labels,datasets:[{label:'Omzet',data:values}]}
-  });
-}
-
-</script>document.getElementById('todayIncome').innerText='Omzet Hari Ini: Rp '+today;
-}
-
-function renderChart(){
-let data={};
-orders.forEach(o=>{data[o.date]=(data[o.date]||0)+o.total});
-let labels=Object.keys(data);
-let values=Object.values(data);
-if(chart)chart.destroy();
-chart=new Chart(document.getElementById('chart'),{
-type:'bar',
-data:{labels:labels,datasets:[{label:'Omzet',data:values}]}
-});
+  document.getElementById("products").innerHTML = html;
 }
 </script>
+
 </body>
-</html>
+  </html>
