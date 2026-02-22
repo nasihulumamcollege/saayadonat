@@ -9,7 +9,7 @@ var firebaseConfig = {
   projectId: "saayadonat",
   storageBucket: "saayadonat.firebasestorage.app",
   messagingSenderId: "191838417140",
-  appId: "1:191838417140:web:7a41a9b5678e6200f2eea1"
+  appId: "1:191838417140:web:b698670357abe7dff2eea1"
 };
 
 firebase.initializeApp(firebaseConfig);
@@ -31,21 +31,21 @@ function addProduct(){
     price:+pPrice.value,
     stock:+pStock.value
   });
-  firebase.database().ref("products").set(products);
+  db.ref("products").set(products);
 }
 
 function updateStock(i,val){
   products[i].stock += val;
   if(products[i].stock < 0) products[i].stock = 0;
-  firebase.database().ref("products").set(products);
+  db.ref("products").set(products);
 }
 
-firebase.database().ref("products").on("value", function(snapshot){
+db.ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   render();
 });
 
-firebase.database().ref("orders").on("value", function(snapshot){
+db.ref("orders").on("value", function(snapshot){
   orders = [];
   snapshot.forEach(function(child){
     orders.push(child.val());
@@ -60,6 +60,53 @@ function render(){
     html += `
       <div>
       <b>${p.name}</b>
+      <span class="badge">Stok ${p.stock}</span><br>
+      Rp ${p.price}<br>
+      <button onclick="updateStock(${i},1)">+ Stok</button>
+      <button onclick="updateStock(${i},-1)">- Stok</button>
+      <hr></div>`;
+  });
+  document.getElementById("productList").innerHTML = html;
+}
+
+function renderOrders(){
+  var html='';
+  var today=0;
+  var todayStr=new Date().toLocaleDateString();
+
+  orders.forEach(function(o){
+    if(o.date===todayStr) today+=o.total;
+    html+=`<tr>
+      <td>${o.date}</td>
+      <td>${o.name}</td>
+      <td>${o.product}</td>
+      <td>${o.qty}</td>
+      <td>${o.total}</td>
+    </tr>`;
+  });
+
+  document.getElementById("orderTable").innerHTML = html;
+  document.getElementById("todayIncome").innerText =
+    "Omzet Hari Ini: Rp " + today;
+}
+
+function renderChart(){
+  var data={};
+  orders.forEach(function(o){
+    data[o.date]=(data[o.date]||0)+o.total;
+  });
+
+  var labels=Object.keys(data);
+  var values=Object.values(data);
+
+  if(chart) chart.destroy();
+
+  chart=new Chart(document.getElementById("chart"),{
+    type:"bar",
+    data:{labels:labels,datasets:[{label:"Omzet",data:values}]}
+  });
+}
+</script>      <b>${p.name}</b>
       <span class="badge">Stok ${p.stock}</span><br>
       Rp ${p.price}<br>
       <button onclick="updateStock(${i},1)">+ Stok</button>
