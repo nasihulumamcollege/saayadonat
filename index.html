@@ -1,3 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SaAya Donat</title>
+
+<style>
+body{font-family:Arial;background:#fff0f6;margin:0;padding:15px}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:12px}
+button{padding:8px 12px;border:none;background:#ff6fb5;color:#fff;border-radius:8px}
+.badge{background:#ffb3d9;padding:3px 8px;border-radius:20px;font-size:12px}
+</style>
+</head>
+<body>
+
+<h2>🍩 SaAya Donat</h2>
+
+<div id="products"></div>
+
+<h3>Data Pemesan</h3>
+<input id="name" placeholder="Nama"><br><br>
+<button onclick="checkout()">Pesan</button>
+
+<!-- Firebase -->
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-app.js"></script>
 <script src="https://www.gstatic.com/firebasejs/8.10.0/firebase-database.js"></script>
 
@@ -13,53 +38,63 @@ var firebaseConfig = {
 };
 
 firebase.initializeApp(firebaseConfig);
+var db = firebase.database();
 
-var products=[];
-var cart=[];
+var products = [];
+var cartIndex = null;
 
-firebase.database().ref("products").on("value", function(snapshot){
+db.ref("products").on("value", function(snapshot){
   products = snapshot.val() || [];
   render();
 });
 
 function render(){
-  var html='';
+  var html="";
   products.forEach(function(p,i){
     if(p.stock>0){
       html+=`
-      <div class="product">
-      <b>${p.name}</b><br>
-      Rp ${p.price}<br>
-      <span class="badge">Stok ${p.stock}</span><br>
-      <button onclick="addCart(${i})">Tambah</button>
-      </div>`;
-    }else{
-      html+=`
-      <div class="product">
-      <b>${p.name}</b><br>
-      <span class="badge">Stok Habis</span>
+      <div class="card">
+        <b>${p.name}</b><br>
+        Rp ${p.price}<br>
+        <span class="badge">Stok ${p.stock}</span><br><br>
+        <button onclick="selectProduct(${i})">Pilih</button>
       </div>`;
     }
   });
-  document.getElementById("productList").innerHTML=html;
+  document.getElementById("products").innerHTML = html;
 }
 
-function addCart(i){
-  cart.push({index:i,qty:1});
-  alert("Ditambahkan ke keranjang");
+function selectProduct(i){
+  cartIndex = i;
+  alert("Produk dipilih");
 }
 
 function checkout(){
-  if(cart.length===0) return alert("Keranjang kosong");
+  if(cartIndex===null) return alert("Pilih produk dulu!");
+  var nama = document.getElementById("name").value;
+  if(nama==="") return alert("Isi nama dulu!");
 
-  var total=0;
+  var p = products[cartIndex];
+  if(p.stock<=0) return alert("Stok habis!");
 
-  cart.forEach(function(c){
-    var p=products[c.index];
-    if(p.stock<c.qty) return alert("Stok tidak cukup!");
+  p.stock -= 1;
 
-    p.stock-=c.qty;
-    total+=p.price*c.qty;
+  db.ref("products").set(products);
+
+  db.ref("orders").push({
+    date:new Date().toLocaleDateString(),
+    name:nama,
+    product:p.name,
+    qty:1,
+    total:p.price
+  });
+
+  alert("Pesanan berhasil ❤️");
+}
+</script>
+
+</body>
+</html>    total+=p.price*c.qty;
 
     firebase.database().ref("orders").push({
       date:new Date().toLocaleDateString(),
