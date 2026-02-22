@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Admin - SaAya Donat</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{font-family:Arial;margin:0;background:#fff0f6}
+header{background:#ff6fb5;color:#fff;padding:15px;text-align:center}
+.container{padding:15px;max-width:900px;margin:auto}
+.card{background:#fff;padding:15px;margin-bottom:15px;border-radius:15px;box-shadow:0 4px 12px rgba(255,105,180,0.2)}
+input,button{width:100%;padding:10px;margin-top:8px;border-radius:10px;border:1px solid #ffc1e3}
+button{background:#ff6fb5;color:#fff;border:none}
+table{width:100%;border-collapse:collapse;margin-top:10px}
+th,td{border:1px solid #ffd1ea;padding:8px;font-size:12px}
+th{background:#ffd1ea}
+.badge{background:#ffb3d9;padding:4px 8px;border-radius:20px;font-size:11px;color:#fff}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h2>🔐 Admin SaAya Donat</h2>
+</header>
+
+<div class="container">
+<div class="card">
+<h3>Login Admin</h3>
+<input type="password" id="pass" placeholder="Password">
+<button onclick="login()">Login</button>
+</div>
+
+<div id="panel" class="hidden">
+<div class="card">
+<h3>Tambah Produk</h3>
+<input id="pName" placeholder="Nama Produk">
+<input id="pPrice" type="number" placeholder="Harga">
+<input id="pStock" type="number" placeholder="Stok">
+<button onclick="addProduct()">Tambah</button>
+</div>
+
+<div class="card">
+<h3>Daftar Produk</h3>
+<div id="productList"></div>
+</div>
+
+<div class="card">
+<h3>Laporan Penjualan</h3>
+<div id="todayIncome"></div>
+<canvas id="chart"></canvas>
+</div>
+
+<div class="card">
+<h3>Data Order</h3>
+<table>
+<thead><tr><th>Tanggal</th><th>Nama</th><th>Produk</th><th>Qty</th><th>Total</th></tr></thead>
+<tbody id="orderTable"></tbody>
+</table>
+</div>
+</div>
+</div>
+
+<script>
+let products=JSON.parse(localStorage.getItem('products')||'[]');
+let orders=JSON.parse(localStorage.getItem('orders')||'[]');
+let chart;
+
+function save(){
+localStorage.setItem('products',JSON.stringify(products));
+localStorage.setItem('orders',JSON.stringify(orders));
+}
+
+function login(){
+if(pass.value==='admin123'){
+document.getElementById('panel').classList.remove('hidden');
+render();
+}
+}
+
+function addProduct(){
+products.push({name:pName.value,price:+pPrice.value,stock:+pStock.value});
+save();
+render();
+}
+
+function updateStock(i,val){
+products[i].stock+=val;
+if(products[i].stock<0)products[i].stock=0;
+save();
+render();
+}
+
+function render(){
+let html='';
+products.forEach((p,i)=>{
+html+=`<div><b>${p.name}</b> <span class="badge">Stok ${p.stock}</span><br>Rp ${p.price}<br><button onclick="updateStock(${i},1)">+ Stok</button><button onclick="updateStock(${i},-1)">- Stok</button><hr></div>`;
+});
+document.getElementById('productList').innerHTML=html;
+renderOrders();
+renderChart();
+}
+
+function renderOrders(){
+let html='';
+let today=0;
+let todayStr=new Date().toLocaleDateString();
+orders.forEach(o=>{
+if(o.date===todayStr)today+=o.total;
+html+=`<tr><td>${o.date}</td><td>${o.name}</td><td>${o.product}</td><td>${o.qty}</td><td>${o.total}</td></tr>`;
+});
+document.getElementById('orderTable').innerHTML=html;
+document.getElementById('todayIncome').innerText='Omzet Hari Ini: Rp '+today;
+}
+
+function renderChart(){
+let data={};
+orders.forEach(o=>{data[o.date]=(data[o.date]||0)+o.total});
+let labels=Object.keys(data);
+let values=Object.values(data);
+if(chart)chart.destroy();
+chart=new Chart(document.getElementById('chart'),{
+type:'bar',
+data:{labels:labels,datasets:[{label:'Omzet',data:values}]}
+});
+}
+</script>
+</body>
+</html>
