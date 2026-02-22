@@ -28,7 +28,17 @@ th{background:#ff6fb5;color:#fff}
 <!-- ADMIN PANEL -->
 <div id="adminPanel">
 <h2>📦 Admin Panel</h2>
-<button onclick="logout()" style="background:#333;margin-bottom:10px">Logout</button>
+<button onclick="logout()" style="background:#333;margin-bottom:10px">Logout</button> <button onclick="resetProducts()" style="background:orange;margin-bottom:5px">
+Reset Produk
+</button>
+
+<button onclick="resetOrders()" style="background:#e67e22;margin-bottom:5px">
+Reset Orders
+</button>
+
+<button onclick="resetAll()" style="background:red;margin-bottom:10px">
+Reset Semua Data
+</button>
 
 <div class="card">
 <input id="pName" placeholder="Nama Produk">
@@ -96,17 +106,6 @@ function login(){
 function logout(){
   localStorage.removeItem("adminLogin");
   location.reload();
-  <button onclick="resetProducts()" style="background:orange;margin-bottom:5px">
-Reset Produk
-</button>
-
-<button onclick="resetOrders()" style="background:#e67e22;margin-bottom:5px">
-Reset Orders
-</button>
-
-<button onclick="resetAll()" style="background:red;margin-bottom:10px">
-Reset Semua Data
-</button>
 }
 
 // ================= LOAD PRODUCTS =================
