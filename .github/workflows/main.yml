@@ -11,7 +11,6 @@ jobs:
     - name: 📂 Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.6
       with:
-        server: ${{ secrets.ftp_host }}
-        username: ${{ secrets.ftp_user }}
+        server: ftp.saayadonat.store
+        username: admin@saayadonat.store
         password: ${{ secrets.ftp_password }}
-        serverdir: htdocs/
